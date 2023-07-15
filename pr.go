@@ -9,8 +9,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 )
 
-var jiraPrefix = "FCS-"
-
 func branchName() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	output, err := cmd.Output()
