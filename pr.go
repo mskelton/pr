@@ -72,19 +72,18 @@ func main() {
 		return
 	}
 
-	args := []string{"pr", "create", "--title", quote(answers.Title), "--body", quote(answers.Body)}
-
 	fmt.Println("Creating pull request...")
-	fmt.Println("gh " + strings.Join(args, " ") + "\n")
+	fmt.Println("gh pr create --title", quote(answers.Title), "--body", quote(answers.Body))
+	fmt.Println()
 
 	// Push first
-	cmd := exec.Command("git", "push", "origin", "HEAD")
+	cmd := exec.Command("git", "push")
 	err = cmd.Run()
 	if err != nil {
 		log.Fatalf("Failed to push branch %s\n", err)
 	}
 
-	cmd = exec.Command("gh", args...)
+	cmd = exec.Command("gh", "pr", "create", "--title", answers.Title, "--body", answers.Body)
 	err = cmd.Run()
 	if err != nil {
 		log.Fatalf("Failed to create pull request %s\n", err)
