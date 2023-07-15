@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -54,6 +55,10 @@ func buildSurvey() []*survey.Question {
 	}
 }
 
+func quote(s string) string {
+	return fmt.Sprintf("%q", s)
+}
+
 func main() {
 	qs := buildSurvey()
 	answers := struct {
@@ -66,4 +71,23 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
+
+	fmt.Println("Creating pull request...")
+	fmt.Println("gh pr create --title", quote(answers.Title), "--body", quote(answers.Body))
+	fmt.Println()
+
+	// Push first
+	cmd := exec.Command("git", "push")
+	err = cmd.Run()
+	if err != nil {
+		log.Fatalf("Failed to push branch %s\n", err)
+	}
+
+	cmd = exec.Command("gh", "pr", "create", "--title", answers.Title, "--body", answers.Body)
+	err = cmd.Run()
+	if err != nil {
+		log.Fatalf("Failed to create pull request %s\n", err)
+	}
+
+	fmt.Println("Pull request created!")
 }
