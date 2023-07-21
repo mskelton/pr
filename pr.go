@@ -10,42 +10,34 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 )
 
-func branchName() (string, error) {
+func branchName() string {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	output, err := cmd.Output()
 
 	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(string(output)), nil
-}
-
-func getDefaultTitle() string {
-	branch, err := branchName()
-	if err != nil {
 		return ""
 	}
 
-	branch = strings.ReplaceAll(branch, "-", " ")
-
-	re := regexp.MustCompile(`^fcs `)
-	branch = re.ReplaceAllString(branch, "FCS-")
-
-	parts := strings.SplitN(branch, " ", 2)
-
-	if len(parts) > 1 && len(parts[1]) > 0 {
-		parts[1] = strings.ToUpper(parts[1][:1]) + parts[1][1:]
-	}
-
-	return strings.Join(parts, " ")
+	return strings.TrimSpace(string(output))
 }
 
-func buildSurvey() []*survey.Question {
+func getDefaultTitle(branch string) (string, string) {
+	re := regexp.MustCompile(`^fcs-\d+`)
+	prefix := re.FindString(branch)
+	title := strings.TrimSpace(strings.ReplaceAll(re.ReplaceAllString(branch, ""), "-", " "))
+
+	if len(title) > 0 {
+		title = strings.ToUpper(title[:1]) + title[1:]
+	}
+
+	return strings.ToUpper(prefix), title
+}
+
+func buildSurvey(title string) []*survey.Question {
 	return []*survey.Question{
 		{
 			Name:     "title",
-			Prompt:   &survey.Input{Message: "Title:", Default: getDefaultTitle()},
+			Prompt:   &survey.Input{Message: "Title:", Default: title},
 			Validate: survey.Required,
 		},
 		{
@@ -60,7 +52,10 @@ func quote(s string) string {
 }
 
 func main() {
-	qs := buildSurvey()
+	branch := branchName()
+	prefix, title := getDefaultTitle(branch)
+	qs := buildSurvey(title)
+
 	answers := struct {
 		Title string
 		Body  string
@@ -68,22 +63,28 @@ func main() {
 
 	err := survey.Ask(qs, &answers)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		log.Fatal(err.Error())
+	}
+
+	finalTitle := answers.Title
+
+	// Automatically add the ticket to the title if present
+	if prefix != "" {
+		finalTitle = prefix + " " + finalTitle
 	}
 
 	fmt.Println("Creating pull request...")
-	fmt.Println("gh pr create --title", quote(answers.Title), "--body", quote(answers.Body))
+	fmt.Println("gh pr create --title", quote(finalTitle), "--body", quote(answers.Body))
 	fmt.Println()
 
-	// Push first
+	// Push first to ensure the command will succeed
 	cmd := exec.Command("git", "push")
 	err = cmd.Run()
 	if err != nil {
 		log.Fatalf("Failed to push branch %s\n", err)
 	}
 
-	cmd = exec.Command("gh", "pr", "create", "--title", answers.Title, "--body", answers.Body)
+	cmd = exec.Command("gh", "pr", "create", "--title", finalTitle, "--body", answers.Body)
 	err = cmd.Run()
 	if err != nil {
 		log.Fatalf("Failed to create pull request %s\n", err)
