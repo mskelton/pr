@@ -63,7 +63,8 @@ func main() {
 
 	err := survey.Ask(qs, &answers)
 	if err != nil {
-		log.Fatal(err.Error())
+		fmt.Println(err.Error())
+		return
 	}
 
 	finalTitle := answers.Title
