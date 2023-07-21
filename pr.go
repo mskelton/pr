@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -21,8 +22,26 @@ func branchName() string {
 	return strings.TrimSpace(string(output))
 }
 
-func getDefaultTitle(branch string) (string, string) {
-	re := regexp.MustCompile(`^fcs-\d+`)
+func capitalize(s string) string {
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func getPrefixes() []string {
+	prefixes := strings.Split(os.Getenv("JIRA_PREFIXES"), ",")
+
+	for i, prefix := range prefixes {
+		prefixes[i] = strings.TrimSpace(prefix)
+	}
+
+	return prefixes
+}
+
+func getDefaultTitle(prefixes []string, branch string) (string, string) {
+	if len(prefixes) == 0 {
+		return "", capitalize(branch)
+	}
+
+	re := regexp.MustCompile(`(?i)^(` + strings.Join(prefixes, "|") + `)-\d+`)
 	prefix := re.FindString(branch)
 	title := strings.TrimSpace(strings.ReplaceAll(re.ReplaceAllString(branch, ""), "-", " "))
 
@@ -53,7 +72,8 @@ func quote(s string) string {
 
 func main() {
 	branch := branchName()
-	prefix, title := getDefaultTitle(branch)
+	prefixes := getPrefixes()
+	prefix, title := getDefaultTitle(prefixes, branch)
 	qs := buildSurvey(title)
 
 	answers := struct {
