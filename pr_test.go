@@ -9,7 +9,7 @@ import (
 func TestWithTicket(t *testing.T) {
 	prefix, title := getDefaultTitle([]string{"ABC"}, "abc-1234-branch-name")
 	assert.Equal(t, "ABC-1234", prefix)
-    assert.Equal(t, "Branchname", title)
+	assert.Equal(t, "Branch name", title)
 }
 
 func TestWithInvalidTicket(t *testing.T) {
