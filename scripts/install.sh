@@ -3,13 +3,9 @@
 set -eu
 printf '\n'
 
-# TODO: Temporary while I work out the install script
-go install github.com/mskelton/pr@latest
-exit 0
-
 # Name of the project, customize the repo name or display name as necessary
-BINARY_NAME=pomo
-REPO_NAME=Pomo
+BINARY_NAME=pr
+REPO_NAME=
 DISPLAY_NAME=
 
 BOLD="$(tput bold 2>/dev/null || printf '')"
@@ -22,8 +18,9 @@ BLUE="$(tput setaf 4 2>/dev/null || printf '')"
 MAGENTA="$(tput setaf 5 2>/dev/null || printf '')"
 NO_COLOR="$(tput sgr0 2>/dev/null || printf '')"
 
-SUPPORTED_TARGETS="x86_64-unknown-linux-musl arm-unknown-linux-gnueabihf \
-                   x86_64-apple-darwin aarch64-apple-darwin"
+SUPPORTED_TARGETS="linux-amd64 linux-arm64 \
+                   darwin-amd64 darwin-arm64 \
+                   windows-amd64 windows-arm64"
 
 info() {
 	printf '%s\n' "${BOLD}${GREY}>${NO_COLOR} $*"
@@ -192,18 +189,17 @@ install() {
 
 # Currently supporting:
 #   - macOS
-#   - linux
-#   - linux_musl (Alpine)
-#   - win (Git Bash)
+#   - Linux
+#   - Windows
 detect_platform() {
 	platform="$(uname -s | tr '[:upper:]' '[:lower:]')"
 
 	case "${platform}" in
-	darwin) platform="apple-darwin" ;;
-	linux) platform="unknown-linux-musl" ;;
-	msys_nt*) platform="pc-windows-msvc" ;;
-	cygwin_nt*) platform="pc-windows-msvc" ;;
-	mingw*) platform="pc-windows-msvc" ;;
+	darwin) platform="darwin" ;;
+	linux) platform="linux" ;;
+	msys_nt*) platform="windows" ;;
+	cygwin_nt*) platform="windows" ;;
+	mingw*) platform="windows" ;;
 	esac
 
 	printf '%s' "${platform}"
@@ -217,15 +213,15 @@ detect_arch() {
 	arch="$(uname -m | tr '[:upper:]' '[:lower:]')"
 
 	case "${arch}" in
-	amd64) arch="x86_64" ;;
+	amd64) arch="amd64" ;;
 	armv*) arch="arm" ;;
-	arm64) arch="aarch64" ;;
+	arm64) arch="arm64" ;;
 	esac
 
 	# `uname -m` in some cases mis-reports 32-bit OS as 64-bit, so double check
-	if [ "${arch}" = "x86_64" ] && [ "$(getconf LONG_BIT)" -eq 32 ]; then
+	if [ "${arch}" = "amd64" ] && [ "$(getconf LONG_BIT)" -eq 32 ]; then
 		arch=i686
-	elif [ "${arch}" = "aarch64" ] && [ "$(getconf LONG_BIT)" -eq 32 ]; then
+	elif [ "${arch}" = "arm64" ] && [ "$(getconf LONG_BIT)" -eq 32 ]; then
 		arch=arm
 	fi
 
@@ -235,7 +231,7 @@ detect_arch() {
 detect_target() {
 	arch="$1"
 	platform="$2"
-	target="$arch-$platform"
+	target="$platform-$arch"
 
 	printf '%s' "${target}"
 }
