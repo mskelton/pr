@@ -18,13 +18,25 @@ for platform in "${platforms[@]}"; do
 	GOOS=${platform_split[0]}
 	GOARCH=${platform_split[1]}
 
+	bin=$package
+	if [ $GOOS = "windows" ]; then
+		bin+='.exe'
+	fi
+
 	# Build the binary
-	env GOOS=$GOOS GOARCH=$GOARCH go build -o $package
+	env GOOS=$GOOS GOARCH=$GOARCH go build -o $bin
 
 	# Zip the binary
 	mkdir -p dist
-	output_name="$package-$GOOS-$GOARCH.tar.gz"
-	tar czf dist/$output_name $package
+	output_name="$package-$GOOS-$GOARCH"
+
+	if [ $GOOS = "windows" ]; then
+		output_name="$output_name.zip"
+		7z a dist/$output_name $bin
+	else
+		output_name="$output_name.tar.gz"
+		tar czf dist/$output_name $bin
+	fi
 
 	if [ $? -ne 0 ]; then
 		echo 'An error has occurred! Aborting the script execution...'
