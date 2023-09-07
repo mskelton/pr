@@ -71,6 +71,8 @@ func quote(s string) string {
 }
 
 func main() {
+	flags := os.Args[1:]
+
 	branch := branchName()
 	prefixes := getPrefixes()
 	prefix, title := getDefaultTitle(prefixes, branch)
@@ -95,7 +97,7 @@ func main() {
 	}
 
 	fmt.Println("Creating pull request...")
-	fmt.Println("gh pr create --title", quote(finalTitle), "--body", quote(answers.Body))
+	fmt.Println("gh pr create", strings.Join(flags, " "), "--title", quote(finalTitle), "--body", quote(answers.Body))
 	fmt.Println()
 
 	// Push first to ensure the command will succeed
@@ -105,7 +107,10 @@ func main() {
 		log.Fatalf("Failed to push branch %s\n", err)
 	}
 
-	cmd = exec.Command("gh", "pr", "create", "--title", finalTitle, "--body", answers.Body)
+	args := []string{"pr", "create", "--title", finalTitle, "--body", answers.Body}
+	args = append(args, flags...)
+
+	cmd = exec.Command("gh", args...)
 	err = cmd.Run()
 	if err != nil {
 		log.Fatalf("Failed to create pull request %s\n", err)
