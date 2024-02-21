@@ -117,4 +117,10 @@ func main() {
 	}
 
 	fmt.Println("Pull request created!")
+
+	cmd = exec.Command("gh", "pr", "view", "--web")
+	err = cmd.Run()
+	if err != nil {
+		// Just bail out if we can't open the browser, it's not a big deal
+	}
 }
