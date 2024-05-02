@@ -8,7 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/huh"
 )
 
 func branchName() string {
@@ -52,18 +53,39 @@ func getDefaultTitle(prefixes []string, branch string) (string, string) {
 	return strings.ToUpper(prefix), title
 }
 
-func buildSurvey(title string) []*survey.Question {
-	return []*survey.Question{
-		{
-			Name:     "title",
-			Prompt:   &survey.Input{Message: "Title:", Default: title},
-			Validate: survey.Required,
+type answers struct {
+	Title       string
+	Description string
+}
+
+func buildForm(answers *answers) *huh.Form {
+	return huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Title").
+				Value(&answers.Title),
+
+			huh.NewText().
+				Title("Description").
+				CharLimit(400).
+				Value(&answers.Description),
+		),
+	).WithKeyMap(&huh.KeyMap{
+		Quit: key.NewBinding(key.WithKeys("ctrl+c")),
+		Input: huh.InputKeyMap{
+			AcceptSuggestion: key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("ctrl+e", "complete")),
+			Prev:             key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "back")),
+			Next:             key.NewBinding(key.WithKeys("enter", "tab"), key.WithHelp("enter", "next")),
+			Submit:           key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit")),
 		},
-		{
-			Name:   "body",
-			Prompt: &survey.Input{Message: "Body:"},
+		Text: huh.TextKeyMap{
+			Prev:    key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "back")),
+			Next:    key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next")),
+			Submit:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit")),
+			NewLine: key.NewBinding(key.WithKeys("ctrl+n"), key.WithHelp("ctrl+n", "new line")),
+			Editor:  key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("ctrl+e", "open editor")),
 		},
-	}
+	})
 }
 
 func quote(s string) string {
@@ -76,14 +98,11 @@ func main() {
 	branch := branchName()
 	prefixes := getPrefixes()
 	prefix, title := getDefaultTitle(prefixes, branch)
-	qs := buildSurvey(title)
 
-	answers := struct {
-		Title string
-		Body  string
-	}{}
+	answers := &answers{Title: title}
+	form := buildForm(answers)
 
-	err := survey.Ask(qs, &answers)
+	err := form.Run()
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -97,7 +116,7 @@ func main() {
 	}
 
 	fmt.Println("Creating pull request...")
-	fmt.Println("gh pr create", strings.Join(flags, " "), "--title", quote(finalTitle), "--body", quote(answers.Body))
+	fmt.Println("gh pr create", strings.Join(flags, " "), "--title", quote(finalTitle), "--body", quote(answers.Description))
 	fmt.Println()
 
 	// Push first to ensure the command will succeed
@@ -107,7 +126,7 @@ func main() {
 		log.Fatalf("Failed to push branch %s\n", err)
 	}
 
-	args := []string{"pr", "create", "--title", finalTitle, "--body", answers.Body}
+	args := []string{"pr", "create", "--title", finalTitle, "--body", answers.Description}
 	args = append(args, flags...)
 
 	cmd = exec.Command("gh", args...)
