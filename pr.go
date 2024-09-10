@@ -12,6 +12,24 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
+func getEnvArray(key string) []string {
+	values := strings.Split(os.Getenv(key), ",")
+
+	for i, prefix := range values {
+		values[i] = strings.TrimSpace(prefix)
+	}
+
+	return values
+}
+
+func getTicketPrefixes() []string {
+	return getEnvArray("PR_TICKET_PREFIXES")
+}
+
+func getStripPrefixes() []string {
+	return getEnvArray("PR_STRIP_PREFIXES")
+}
+
 func branchName() string {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	output, err := cmd.Output()
@@ -23,18 +41,16 @@ func branchName() string {
 	return strings.TrimSpace(string(output))
 }
 
-func capitalize(s string) string {
-	return strings.ToUpper(s[:1]) + s[1:]
-}
-
-func getPrefixes() []string {
-	prefixes := strings.Split(os.Getenv("JIRA_PREFIXES"), ",")
-
-	for i, prefix := range prefixes {
-		prefixes[i] = strings.TrimSpace(prefix)
+func stripPrefix(branchName string) string {
+	for _, prefix := range getStripPrefixes() {
+		branchName = strings.TrimPrefix(branchName, prefix)
 	}
 
-	return prefixes
+	return branchName
+}
+
+func capitalize(s string) string {
+	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 func getDefaultTitle(prefixes []string, branch string) (string, string) {
@@ -95,9 +111,9 @@ func quote(s string) string {
 func main() {
 	flags := os.Args[1:]
 
-	branch := branchName()
-	prefixes := getPrefixes()
-	prefix, title := getDefaultTitle(prefixes, branch)
+	branch := stripPrefix(branchName())
+	ticketPrefixes := getTicketPrefixes()
+	prefix, title := getDefaultTitle(ticketPrefixes, branch)
 
 	answers := &answers{Title: title}
 	form := buildForm(answers)
