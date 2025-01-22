@@ -5,33 +5,14 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/huh"
 )
 
-func getEnvArray(key string) []string {
-	values := strings.Split(os.Getenv(key), ",")
-
-	for i, prefix := range values {
-		values[i] = strings.TrimSpace(prefix)
-	}
-
-	return values
-}
-
-func getTicketPrefixes() []string {
-	return getEnvArray("PR_TICKET_PREFIXES")
-}
-
-func getStripPrefixes() []string {
-	return getEnvArray("PR_STRIP_PREFIXES")
-}
-
-func branchName() string {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+func defaultBranch() string {
+	cmd := exec.Command("git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
 	output, err := cmd.Output()
 
 	if err != nil {
@@ -41,32 +22,27 @@ func branchName() string {
 	return strings.TrimSpace(string(output))
 }
 
-func stripPrefix(branchName string) string {
-	for _, prefix := range getStripPrefixes() {
-		branchName = strings.TrimPrefix(branchName, prefix)
+func getDefaultTitle() string {
+	cmd := exec.Command("git", "merge-base", "HEAD", defaultBranch())
+	output, err := cmd.Output()
+
+	if err != nil {
+		return ""
 	}
 
-	return branchName
-}
+	cmd = exec.Command(
+		"git", "log",
+		"--reverse",
+		"--max-count", "1",
+		"--format=%s", strings.TrimSpace(string(output))+"..HEAD",
+	)
+	output, err = cmd.Output()
 
-func capitalize(s string) string {
-	return strings.ToUpper(s[:1]) + s[1:]
-}
-
-func getDefaultTitle(prefixes []string, branch string) (string, string) {
-	if len(prefixes) == 0 {
-		return "", capitalize(branch)
+	if err != nil {
+		return ""
 	}
 
-	re := regexp.MustCompile(`(?i)^(` + strings.Join(prefixes, "|") + `)-\d+`)
-	prefix := re.FindString(branch)
-	title := strings.TrimSpace(strings.ReplaceAll(re.ReplaceAllString(branch, ""), "-", " "))
-
-	if len(title) > 0 {
-		title = strings.ToUpper(title[:1]) + title[1:]
-	}
-
-	return strings.ToUpper(prefix), title
+	return strings.TrimSpace(string(output))
 }
 
 type answers struct {
@@ -110,10 +86,7 @@ func quote(s string) string {
 
 func main() {
 	flags := os.Args[1:]
-
-	branch := stripPrefix(branchName())
-	ticketPrefixes := getTicketPrefixes()
-	prefix, title := getDefaultTitle(ticketPrefixes, branch)
+	title := getDefaultTitle()
 
 	answers := &answers{Title: title}
 	form := buildForm(answers)
@@ -124,15 +97,8 @@ func main() {
 		return
 	}
 
-	finalTitle := answers.Title
-
-	// Automatically add the ticket to the title if present
-	if prefix != "" {
-		finalTitle = prefix + " " + finalTitle
-	}
-
 	fmt.Println("Creating pull request...")
-	fmt.Println("gh pr create", strings.Join(flags, " "), "--title", quote(finalTitle), "--body", quote(answers.Description))
+	fmt.Println("gh pr create", strings.Join(flags, " "), "--title", quote(answers.Title), "--body", quote(answers.Description))
 	fmt.Println()
 
 	// Push first to ensure the command will succeed
@@ -142,7 +108,7 @@ func main() {
 		log.Fatalf("Failed to push branch %s\n", err)
 	}
 
-	args := []string{"pr", "create", "--title", finalTitle, "--body", answers.Description}
+	args := []string{"pr", "create", "--title", answers.Title, "--body", answers.Description}
 	args = append(args, flags...)
 
 	cmd = exec.Command("gh", args...)
