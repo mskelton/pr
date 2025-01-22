@@ -98,7 +98,12 @@ func main() {
 	}
 
 	fmt.Println("Creating pull request...")
-	fmt.Println("gh pr create", strings.Join(flags, " "), "--title", quote(answers.Title), "--body", quote(answers.Description))
+	printArgs := []string{"--title", quote(answers.Title), "--body", quote(answers.Description)}
+	if len(flags) > 0 {
+		fmt.Println("gh pr create", strings.Join(flags, " "), strings.Join(printArgs, " "))
+	} else {
+		fmt.Println("gh pr create", strings.Join(printArgs, " "))
+	}
 	fmt.Println()
 
 	// Push first to ensure the command will succeed
