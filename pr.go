@@ -33,7 +33,6 @@ func getDefaultTitle() string {
 	cmd = exec.Command(
 		"git", "log",
 		"--reverse",
-		"--max-count", "1",
 		"--format=%s", strings.TrimSpace(string(output))+"..HEAD",
 	)
 	output, err = cmd.Output()
@@ -42,7 +41,12 @@ func getDefaultTitle() string {
 		return ""
 	}
 
-	return strings.TrimSpace(string(output))
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) > 0 {
+		return lines[0]
+	}
+
+	return ""
 }
 
 type answers struct {
