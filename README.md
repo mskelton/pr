@@ -19,23 +19,6 @@ cd pr
 go install .
 ```
 
-## Prerequisites
-
-To parse and format a Linear or Jira ticket from your branch name, add a
-`PR_TICKET_PREFIXES` environment variable to your shell with a list of supported
-prefixes.
-
-```bash
-export PR_TICKET_PREFIXES="ABC,SUPPORT"
-```
-
-You can also specify prefixes to strip out of your PR names. This is useful if
-you include your username as a prefix in your branches.
-
-```bash
-export PR_STRIP_PREFIXES='username/'
-```
-
 ## Usage
 
 ```bash
