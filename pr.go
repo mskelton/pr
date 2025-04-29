@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -88,15 +90,36 @@ func quote(s string) string {
 	return fmt.Sprintf("%q", s)
 }
 
+func copyToClipboard(text string) error {
+	cmd := exec.Command("pbcopy")
+	in, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	_, err = in.Write([]byte(text))
+	if err != nil {
+		return err
+	}
+
+	if err := in.Close(); err != nil {
+		return err
+	}
+
+	return cmd.Wait()
+}
+
 func main() {
 	flags := os.Args[1:]
 	title := getDefaultTitle()
 
 	answers := &answers{Title: title}
 	form := buildForm(answers)
-
-	err := form.Run()
-	if err != nil {
+	if err := form.Run(); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
@@ -108,23 +131,26 @@ func main() {
 	} else {
 		fmt.Println("gh pr create", strings.Join(printArgs, " "))
 	}
-	fmt.Println()
 
 	// Push first to ensure the command will succeed
 	cmd := exec.Command("git", "push")
-	err = cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		log.Fatalf("Failed to push branch %s\n", err)
 	}
 
 	args := []string{"pr", "create", "--title", answers.Title, "--body", answers.Description}
 	args = append(args, flags...)
 
+	var stdout bytes.Buffer
 	cmd = exec.Command("gh", args...)
-	err = cmd.Run()
-	if err != nil {
+	cmd.Stdout = &stdout
+
+	if err := cmd.Run(); err != nil {
 		log.Fatalf("Failed to create pull request %s\n", err)
 	}
 
-	fmt.Println("Pull request created!")
+	urlRegex := regexp.MustCompile(`https?://[^\s]+`)
+	url := urlRegex.FindString(stdout.String())
+	copyToClipboard(url)
+	fmt.Println(url)
 }
