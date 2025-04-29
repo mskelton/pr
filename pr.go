@@ -131,7 +131,6 @@ func main() {
 	} else {
 		fmt.Println("gh pr create", strings.Join(printArgs, " "))
 	}
-	fmt.Println()
 
 	// Push first to ensure the command will succeed
 	cmd := exec.Command("git", "push")
