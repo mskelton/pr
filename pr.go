@@ -110,7 +110,7 @@ func main() {
 	}
 	fmt.Println()
 
-	// Push first to ensure the command will succeed
+	// hPush first to ensure the command will succeed
 	cmd := exec.Command("git", "push")
 	err = cmd.Run()
 	if err != nil {
