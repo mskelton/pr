@@ -54,6 +54,7 @@ func getDefaultTitle() string {
 type answers struct {
 	Title       string
 	Description string
+	Demo        string
 }
 
 func buildForm(answers *answers) *huh.Form {
@@ -67,6 +68,11 @@ func buildForm(answers *answers) *huh.Form {
 				Title("Description").
 				CharLimit(400).
 				Value(&answers.Description),
+
+			huh.NewText().
+				Title("Demo").
+				CharLimit(400).
+				Value(&answers.Demo),
 		),
 	).WithKeyMap(&huh.KeyMap{
 		Quit: key.NewBinding(key.WithKeys("ctrl+c")),
@@ -125,7 +131,12 @@ func main() {
 	}
 
 	fmt.Println("Creating pull request...")
-	printArgs := []string{"--title", quote(answers.Title), "--body", quote(answers.Description)}
+	body := "## Description\n\n" + answers.Description
+	if answers.Demo != "" {
+		body += "\n\n## Demo\n\n" + answers.Demo
+	}
+
+	printArgs := []string{"--title", quote(answers.Title), "--body", quote(body)}
 	if len(flags) > 0 {
 		fmt.Println("gh pr create", strings.Join(flags, " "), strings.Join(printArgs, " "))
 	} else {
@@ -138,7 +149,7 @@ func main() {
 		log.Fatalf("Failed to push branch %s\n", err)
 	}
 
-	args := []string{"pr", "create", "--title", answers.Title, "--body", answers.Description}
+	args := []string{"pr", "create", "--title", answers.Title, "--body", body}
 	args = append(args, flags...)
 
 	var stdout bytes.Buffer
