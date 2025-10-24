@@ -54,7 +54,6 @@ func getDefaultTitle() string {
 type answers struct {
 	Title       string
 	Description string
-	Demo        string
 }
 
 func buildForm(answers *answers) *huh.Form {
@@ -68,11 +67,6 @@ func buildForm(answers *answers) *huh.Form {
 				Title("Description").
 				CharLimit(400).
 				Value(&answers.Description),
-
-			huh.NewText().
-				Title("Demo").
-				CharLimit(400).
-				Value(&answers.Demo),
 		),
 	).WithKeyMap(&huh.KeyMap{
 		Quit: key.NewBinding(key.WithKeys("ctrl+c")),
@@ -131,17 +125,7 @@ func main() {
 	}
 
 	fmt.Println("Creating pull request...")
-	body := "## Description\n\n" + answers.Description
-	if answers.Demo != "" {
-		body += "\n\n## Demo\n\n" + answers.Demo
-	}
-
-	printArgs := []string{"--title", quote(answers.Title), "--body", quote(body)}
-	if len(flags) > 0 {
-		fmt.Println("gh pr create", strings.Join(flags, " "), strings.Join(printArgs, " "))
-	} else {
-		fmt.Println("gh pr create", strings.Join(printArgs, " "))
-	}
+	body := fmt.Sprintf("## Description\n\n%s\n\n## Demo\n\n", answers.Description)
 
 	// Push first to ensure the command will succeed
 	cmd := exec.Command("git", "push")
@@ -157,7 +141,9 @@ func main() {
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		log.Fatalf("Failed to create pull request %s\n", err)
+		fmt.Printf("Failed to create pull request %s\n", err)
+		fmt.Printf("printf %s | gh pr create -t %s -F - %s\n", quote(body), quote(answers.Title), strings.Join(flags, " "))
+		os.Exit(1)
 	}
 
 	urlRegex := regexp.MustCompile(`https?://[^\s]+`)
