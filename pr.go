@@ -125,7 +125,7 @@ func main() {
 	}
 
 	fmt.Println("Creating pull request...")
-	body := fmt.Sprintf("## Description\n\n%s\n\n## Demo\n\n", answers.Description)
+	body := fmt.Sprintf("## Description\n\n%s\n\n", answers.Description)
 
 	// Push first to ensure the command will succeed
 	cmd := exec.Command("git", "push")
